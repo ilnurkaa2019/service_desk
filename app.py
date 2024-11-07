@@ -58,18 +58,19 @@ secret_key = 'jsONweBToken_secretKEy_ser_vi_ced_e_sk'
 conn = sqlite3.connect('logs.db')
 cursor = conn.cursor()
 controller = CookieController()
-page_dict = []
+page_list = []
 delete_not_actual_tokens()
 conn.commit()
 
 
 
 if not autentification(conn):
-    pg = st.navigation([st.Page(
+    login_ = st.Page(
         'Pages/login.py',
         title="Авторизация",
         url_path='/login',
-        default=False)], position='hidden')
+        default=False)
+    page_list = [login_]
 else:
     st.html('nav_bar.html')
     # Определеям страницы
@@ -81,20 +82,15 @@ else:
     a_stations_ = st.Page(
         'Pages/a_stations.py',
         title="Станции",
-        url_path='/stations',
-        default=False
+        url_path='/stations'
     )
-    empty_ = st.Page(
-        'Pages/empty.py',
-        title="Добро пожаловать")
     # Сортируем по ролям
-    account_pages = [empty_, settings_]
+    account_pages = [settings_]
     admin_pages = [a_stations_]
-
+    page_list = account_pages
     if tItems().role == 'admin':
-        page_dict = admin_pages
-    pg = st.navigation(account_pages + page_dict, position='hidden')
-
-
+        page_list += admin_pages
+st.write(str(page_list))
+pg = st.navigation(page_list, position='hidden')
 pg.run()
 conn.close()
