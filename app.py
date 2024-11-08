@@ -90,7 +90,6 @@ else:
     page_list = account_pages
     if tItems().role == 'admin':
         page_list += admin_pages
-st.write(str(page_list))
 pg = st.navigation(page_list, position='hidden')
 pg.run()
 conn.close()

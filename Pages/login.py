@@ -43,9 +43,9 @@ def check_password():
         return token
 
     def password_entered():
+        """Проверка на правильность введеного пароля"""
         global conn
         cursor = conn.cursor()
-        """Проверка на правильность введеного пароля"""
         @st.dialog("Ошибка авторизации")
         def incorrect_notice(text="Повторите попытку"):
             """Уведомление о неверном логине"""
@@ -55,28 +55,22 @@ def check_password():
         if '' in [st.session_state["username"],st.session_state["password"]]:
             incorrect_notice('Пустое поле ввода. Пожалуйста, введите пароль и логин.')
         else:
-            print(str(md5_(st.session_state["username"] + st.secrets['keys']['splitter'] + st.session_state["password"])))
             if cursor.execute(f'SELECT COUNT(hash) FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0]:
-                
+                st.session_state["hash"]=cursor.execute(f'SELECT hash FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0]
                 if hmac.compare_digest(md5_(st.session_state["username"] + st.secrets['keys']['splitter'] + st.session_state["password"]), 
-                                cursor.execute(f'SELECT hash FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0]
-                                ):
+                                st.session_state["hash"]):
                     st.session_state["password_correct"] = True
-
-
-                    #Задаем роль
-
                     #Для генерации токена
                     user = {"hash": st.session_state["hash"],
-                            "role": conn.cursor().execute(f"""SELECT role FROM user WHERE login="{st.session_state["username"]}" """).fetchone()[0]}
+                            "role": conn.cursor().execute(f"""SELECT role FROM user WHERE hash="{st.session_state["hash"]}" """).fetchone()[0]}
                     token = generate_jwt_token(user, exp_time)
-                    sysuser = conn.cursor().execute(f"""SELECT id FROM user WHERE login ="{user['login']}" """).fetchone()[0]
+                    sysuser = conn.cursor().execute(f"""SELECT id FROM user WHERE hash ="{user['hash']}" """).fetchone()[0]
                     add_JWT_to_db(conn, datetime.utcnow(), token, sysuser)
                     controller = CookieController()
                     controller.set('token', token)
                     st.session_state.token = token
                     del st.session_state["password"]  # Не храним пароль и логин в состоянии страницы
-                    # del st.session_state["username"]
+                    del st.session_state["username"]
                 else:
                     st.session_state["password_correct"] = False
                     incorrect_notice('Не удалось авторизироваться. \nПожалуйста, повторите попытку.')
