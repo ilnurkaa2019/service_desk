@@ -4,9 +4,14 @@ import sqlite3
 from datetime import datetime, timedelta
 from streamlit_cookies_controller import CookieController
 import jwt
+import hashlib
+
 def check_password():
     """Возвращает `True`, если пользователь авторизировался правильно."""
     global page_dict, conn
+
+    def md5_(a):
+        return hashlib.md5(a.encode()).hexdigest()
 
     def login_form():
         """Форма для сбора информации от пользователя"""
@@ -32,44 +37,54 @@ def check_password():
     #Добавление токена в db
     def add_JWT_to_db(conn, JWTtime, token, sysuser):
         cursor = conn.cursor()
-        # try:
         cursor.execute(f"""INSERT INTO jwts (published, token, sysuser) VALUES ({"'" + str(JWTtime) + "'"}, {'"' + str(token) + '"'}, {sysuser})""")
         conn.commit()
-
-        # except Exception as e:
-        #     conn.rollback()
-        #     return None
-        # finally:
         cursor.close()
         return token
 
     def password_entered():
+        global conn
+        cursor = conn.cursor()
         """Проверка на правильность введеного пароля"""
-        if st.session_state["username"] in st.secrets[
-            "passwords"
-        ] and hmac.compare_digest(
-            st.session_state["password"],
-            st.secrets.passwords[st.session_state["username"]],
-        ):
-            st.session_state["password_correct"] = True
-
-
-            #Задаем роль
-
-            #Для генерации токена
-            user = {"login": st.session_state["username"],
-                    "password": st.session_state["password"],
-                    "role": conn.cursor().execute(f"""SELECT role FROM user WHERE login="{st.session_state["username"]}" """).fetchone()[0]}
-            token = generate_jwt_token(user, exp_time)
-            sysuser = conn.cursor().execute(f"""SELECT id FROM user WHERE login ="{user['login']}" """).fetchone()[0]
-            add_JWT_to_db(conn, datetime.utcnow(), token, sysuser)
-            controller = CookieController()
-            controller.set('token', token)
-            st.session_state.token = token
-            del st.session_state["password"]  # Не храним пароль и логин в состоянии страницы
-            # del st.session_state["username"]
+        @st.dialog("Ошибка авторизации")
+        def incorrect_notice(text="Повторите попытку"):
+            """Уведомление о неверном логине"""
+            st.write(f"{text}")
+            if st.button('Вернуться'):
+                st.rerun()
+        if '' in [st.session_state["username"],st.session_state["password"]]:
+            incorrect_notice('Пустое поле ввода. Пожалуйста, введите пароль и логин.')
         else:
-            st.session_state["password_correct"] = False
+            print(str(md5_(st.session_state["username"] + st.secrets['keys']['splitter'] + st.session_state["password"])))
+            if cursor.execute(f'SELECT COUNT(hash) FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0]:
+                
+                if hmac.compare_digest(md5_(st.session_state["username"] + st.secrets['keys']['splitter'] + st.session_state["password"]), 
+                                cursor.execute(f'SELECT hash FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0]
+                                ):
+                    st.session_state["password_correct"] = True
+
+
+                    #Задаем роль
+
+                    #Для генерации токена
+                    user = {"hash": st.session_state["hash"],
+                            "role": conn.cursor().execute(f"""SELECT role FROM user WHERE login="{st.session_state["username"]}" """).fetchone()[0]}
+                    token = generate_jwt_token(user, exp_time)
+                    sysuser = conn.cursor().execute(f"""SELECT id FROM user WHERE login ="{user['login']}" """).fetchone()[0]
+                    add_JWT_to_db(conn, datetime.utcnow(), token, sysuser)
+                    controller = CookieController()
+                    controller.set('token', token)
+                    st.session_state.token = token
+                    del st.session_state["password"]  # Не храним пароль и логин в состоянии страницы
+                    # del st.session_state["username"]
+                else:
+                    st.session_state["password_correct"] = False
+                    incorrect_notice('Не удалось авторизироваться. \nПожалуйста, повторите попытку.')
+            else:
+                st.session_state["password_correct"] = False
+                incorrect_notice('Введённого Вами логина не существует. \nПожалуйста, повторите попытку авторизации.')
+                return False
+        
 
     # Возвращает True если логин и пароль верны.
     if st.session_state.get("password_correct", False):
@@ -78,11 +93,11 @@ def check_password():
     # Показывает введённые логин и пароль.
     login_form()
     if "password_correct" in st.session_state:
-        st.error("Логин или пароль введены неправильно")
+        st.error("Некорректные данные")
     return False
 
 #секретный ключ для состания веб-токена
-secret_key = "jsONweBToken_secretKEy_ser_vi_ced_e_sk"
+secret_key = st.secrets['keys']['secret_hash']
 #время жизни веб токена в минутах
 exp_time = 30
 

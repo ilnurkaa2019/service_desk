@@ -9,7 +9,7 @@ class tItems:
     def __init__(self):
         self.token = jwt.decode(bytes(controller.get('token'), 'utf-8'), secret_key, algorithms=['HS256'],
                                 options={'verify_signature': False})
-        self.login = self.token['user_id']['login']
+        self.hash = self.token['user_id']['hash']
         self.role = self.token['user_id']['role']
         self.exp = self.token['exp']
 
@@ -43,8 +43,8 @@ def autentification(conn):
 def logout():
     if 'password_correct' in st.session_state:
         del st.session_state.password_correct
-    if 'username' in st.session_state:
-        del st.session_state['username']
+    if 'hash' in st.session_state:
+        del st.session_state['hash']
     if cursor.execute(f"""SELECT COUNT(token) FROM jwts WHERE token="{controller.get('token')}" """):
         cursor.execute(f"""DELETE FROM jwts WHERE token="""
                        f"""(SELECT token FROM jwts j """
@@ -54,7 +54,7 @@ def logout():
     st.rerun()
 
 
-secret_key = 'jsONweBToken_secretKEy_ser_vi_ced_e_sk'
+secret_key = st.secrets['keys']['secret_hash']
 conn = sqlite3.connect('logs.db')
 cursor = conn.cursor()
 controller = CookieController()
