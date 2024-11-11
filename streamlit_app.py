@@ -4,7 +4,7 @@ import sqlite3
 from streamlit_cookies_controller import CookieController
 import jwt
 from datetime import datetime
-print(st.session_state)
+
 class tItems:
     def __init__(self):
         self.token = jwt.decode(bytes(controller.get('token'), 'utf-8'), secret_key, algorithms=['HS256'],
