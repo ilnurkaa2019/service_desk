@@ -8,7 +8,7 @@ import hashlib
 
 def check_password():
     """Возвращает `True`, если пользователь авторизировался правильно."""
-    global page_dict, conn
+    global conn
 
     def md5_(a):
         return hashlib.md5(a.encode()).hexdigest()
@@ -20,7 +20,6 @@ def check_password():
             st.text_input("Логин", key="username")
             st.text_input("Пароль", type="password", key="password")
             st.form_submit_button("Войти", on_click=password_entered)
-
     def generate_jwt_token(user_id, expiration_minutes):
         if user_id['role'] == 'admin':
             # Задаем время жизни токена
@@ -43,6 +42,7 @@ def check_password():
         return token
 
     def password_entered():
+        
         """Проверка на правильность введеного пароля"""
         global conn
         cursor = conn.cursor()
@@ -68,7 +68,6 @@ def check_password():
                     add_JWT_to_db(conn, datetime.utcnow(), token, sysuser)
                     controller = CookieController()
                     controller.set('token', token)
-                    st.session_state.token = token
                     del st.session_state["password"]  # Не храним пароль и логин в состоянии страницы
                     del st.session_state["username"]
                 else:
@@ -83,7 +82,6 @@ def check_password():
     # Возвращает True если логин и пароль верны.
     if st.session_state.get("password_correct", False):
         return True
-
     # Показывает введённые логин и пароль.
     login_form()
     if "password_correct" in st.session_state:
@@ -93,8 +91,7 @@ def check_password():
 #секретный ключ для состания веб-токена
 secret_key = st.secrets['keys']['secret_hash']
 #время жизни веб токена в минутах
-exp_time = 30
-
+exp_time = 10
 conn = sqlite3.connect('logs.db', check_same_thread=False)
 if not check_password():
-    st.stop()
+    st.stop
