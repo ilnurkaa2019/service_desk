@@ -4,7 +4,8 @@ import sqlite3
 from streamlit_cookies_controller import CookieController
 import jwt
 from datetime import datetime
-
+import time
+print(st.session_state.keys())
 class tItems:
     def __init__(self):
         self.token = jwt.decode(bytes(controller.get('token'), 'utf-8'), secret_key, algorithms=['HS256'],
@@ -34,8 +35,7 @@ def autentification(conn):
         res = cursor.execute("SELECT token FROM jwts").fetchall()
         for token in res:
             token_in_db += [token[0]]
-        return token_in_db
-    
+        return token_in_db 
     token_in_web = controller.get('token')
     token_in_db = actual_tokens()
     if token_in_web in token_in_db:
