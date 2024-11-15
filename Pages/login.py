@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from streamlit_cookies_controller import CookieController
 import jwt
 import hashlib
-
 def check_password():
     """Возвращает `True`, если пользователь авторизировался правильно."""
     global conn
@@ -56,25 +55,23 @@ def check_password():
             incorrect_notice('Пустое поле ввода. Пожалуйста, введите пароль и логин.')
         else:
             if cursor.execute(f'SELECT COUNT(hash) FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0]:
-                st.session_state["hash"]=cursor.execute(f'SELECT hash FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0]
+                controller = CookieController()
+                controller.set("hash", cursor.execute(f'SELECT hash FROM user WHERE login="{st.session_state["username"]}"').fetchone()[0])
                 if hmac.compare_digest(md5_(st.session_state["username"] + st.secrets['keys']['splitter'] + st.session_state["password"]), 
-                                st.session_state["hash"]):
-                    st.session_state["password_correct"] = True
+                                controller.get("hash")):
                     #Для генерации токена
-                    user = {"hash": st.session_state["hash"],
-                            "role": conn.cursor().execute(f"""SELECT role FROM user WHERE hash="{st.session_state["hash"]}" """).fetchone()[0]}
+                    user = {"hash": controller.get("hash"),
+                            "role": conn.cursor().execute(f"""SELECT role FROM user WHERE hash="{controller.get("hash")}" """).fetchone()[0]}
                     token = generate_jwt_token(user, exp_time)
                     sysuser = conn.cursor().execute(f"""SELECT id FROM user WHERE hash ="{user['hash']}" """).fetchone()[0]
                     add_JWT_to_db(conn, datetime.utcnow(), token, sysuser)
-                    controller = CookieController()
                     controller.set('token', token)
+                    
                     del st.session_state["password"]  # Не храним пароль и логин в состоянии страницы
                     del st.session_state["username"]
                 else:
-                    st.session_state["password_correct"] = False
                     incorrect_notice('Не удалось авторизироваться. \nПожалуйста, повторите попытку.')
             else:
-                st.session_state["password_correct"] = False
                 incorrect_notice('Введённого Вами логина не существует. \nПожалуйста, повторите попытку авторизации.')
                 return False
         

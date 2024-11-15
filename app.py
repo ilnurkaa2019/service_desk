@@ -5,7 +5,10 @@ from streamlit_cookies_controller import CookieController
 import jwt
 from datetime import datetime
 import time
-print(st.session_state.keys())
+
+
+controller = CookieController()
+print(list(st.session_state.keys()), list(controller.getAll().keys()))
 class tItems:
     def __init__(self):
         self.token = jwt.decode(bytes(controller.get('token'), 'utf-8'), secret_key, algorithms=['HS256'],
@@ -47,8 +50,6 @@ def autentification(conn):
 def logout():
     global conn
     cursor = conn.cursor()
-    if 'password_correct' in st.session_state:
-        del st.session_state.password_correct
     if 'hash' in st.session_state:
         del st.session_state['hash']
     if cursor.execute(f"""SELECT COUNT(token) FROM jwts WHERE token="{controller.get('token')}" """):
@@ -57,6 +58,7 @@ def logout():
                        f"""LEFT JOIN user u ON j.sysuser=u.id """
                        f"""WHERE u.login="{tItems().login}" )""")
     controller.remove('token')
+    controller.remove('hash')
     st.rerun()
 def aut_true():
     st.html('nav_bar.html')
@@ -69,15 +71,20 @@ def aut_true():
     a_stations_ = st.Page(
         'Pages/a_stations.py',
         title="Станции",
-        url_path='/stations'
-    )
+        url_path='/stations')
+    logout_ = st.Page(
+        logout,
+        title="Выход",
+        url_path='/logout',
+        default=False)
     # Сортируем по ролям
-    account_pages = [settings_]
+    account_pages = [settings_,logout_]
     admin_pages = [a_stations_]
     page_list = account_pages
     if tItems().role == 'admin':
         page_list += admin_pages
-    return page_list
+    pg = st.navigation(page_list, position='hidden')
+    pg.run()
 
 def aut_false():
     login_ = st.Page(
@@ -85,17 +92,23 @@ def aut_false():
         title="Авторизация",
         url_path='/login',
         default=False)
-    return [login_]
+    pg = st.navigation([login_], position='hidden')
+    pg.run()
 
-controller = CookieController()
-secret_key = st.secrets['keys']['secret_hash']
-conn = sqlite3.connect('logs.db')
-delete_not_actual_tokens()
 
-if autentification(conn):
-    page_list = aut_true()
-else:
-    page_list = aut_false()
-pg = st.navigation(page_list, position='hidden')
-pg.run()
-conn.close()
+def main():
+    global conn, secret_key
+    secret_key = st.secrets['keys']['secret_hash']
+    conn = sqlite3.connect('logs.db')
+    delete_not_actual_tokens()
+
+    if autentification(conn):
+        aut_true()
+    else:
+        aut_false()
+    
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()
